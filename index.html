@@ -134,6 +134,22 @@ header{padding:24px 0 18px;border-bottom:1px solid var(--border);margin-bottom:2
 /* section divider */
 .cat-section-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);padding:10px 13px 4px;background:var(--bg1)}
 
+/* saved configs */
+.saved-list{display:flex;flex-direction:column;gap:4px;padding:10px 13px}
+.saved-empty{font-size:12px;color:var(--text-muted);padding:10px 13px;text-align:center}
+.saved-row{display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg2);transition:border-color .12s}
+.saved-row:hover{border-color:var(--border-mid)}
+.saved-name{flex:1;font-size:12.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--text-primary)}
+.saved-name:hover{color:var(--cyan)}
+.saved-date{font-size:10px;color:var(--text-muted);white-space:nowrap}
+.saved-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:0 2px;line-height:1;transition:color .12s;flex-shrink:0}
+.saved-del:hover{color:#f87171}
+.save-form{display:flex;gap:6px;padding:10px 13px;border-top:1px solid var(--border)}
+.save-input{flex:1;padding:5px 9px;background:var(--bg3);border:1px solid var(--border-mid);border-radius:var(--r-sm);color:var(--text-primary);font-family:var(--font-ui);font-size:12px;outline:none;transition:border-color .14s}
+.save-input:focus{border-color:var(--cyan)}
+.save-input::placeholder{color:var(--text-muted)}
+.save-btn{padding:5px 12px;background:var(--cyan);border:none;border-radius:var(--r-sm);color:#000;font-family:var(--font-ui);font-size:12px;font-weight:600;cursor:pointer;transition:opacity .14s;white-space:nowrap;flex-shrink:0}
+.save-btn:hover{opacity:.85}
 /* scrollbar global */
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:var(--bg0)}
@@ -149,7 +165,7 @@ header{padding:24px 0 18px;border-bottom:1px solid var(--border);margin-bottom:2
 <header>
   <div class="header-left">
     <div class="logo">ARK <span>ASA</span> Config Builder</div>
-    <div class="tagline">PvP console command generator · v2.0</div>
+    <div class="tagline">PvP console command generator · v2.1</div>
   </div>
   <div class="preset-group" id="presets">
     <button class="preset-btn" data-preset="balanced">Balanced</button>
@@ -185,6 +201,15 @@ header{padding:24px 0 18px;border-bottom:1px solid var(--border);margin-bottom:2
       <div class="pheader">Console output — paste in-game with Tab</div>
       <div class="outbox" id="output"></div>
       <button class="copy-btn" id="copy-btn" onclick="copyOutput()">Copy to clipboard</button>
+    </div>
+
+    <div class="psection" id="saved-panel">
+      <div class="pheader">Saved configs</div>
+      <div id="saved-list-wrap"></div>
+      <div class="save-form">
+        <input class="save-input" id="save-name" type="text" placeholder="Config name…" maxlength="40"/>
+        <button class="save-btn" onclick="saveConfig()">Save</button>
+      </div>
     </div>
 
     <div class="psection">
@@ -673,6 +698,91 @@ function copyOutput() {
 
 document.querySelectorAll('.preset-btn').forEach(btn => btn.addEventListener('click', () => applyPreset(btn.dataset.preset)));
 applyPreset('nuclear');
+
+// ── Saved configs (localStorage) ────────────────────────────────
+const STORAGE_KEY = 'asa_configs_v1';
+
+function getSaved() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+  catch(e) { return []; }
+}
+
+function setSaved(list) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+}
+
+function renderSaved() {
+  const list = getSaved();
+  const wrap = document.getElementById('saved-list-wrap');
+  if (!list.length) {
+    wrap.innerHTML = '<div class="saved-empty">No saved configs yet — tweak settings and hit Save.</div>';
+    return;
+  }
+  wrap.innerHTML = '<div class="saved-list">' +
+    list.map((c, i) => `
+      <div class="saved-row">
+        <span class="saved-name" onclick="loadConfig(${i})" title="Load '${c.name}'">${c.name}</span>
+        <span class="saved-date">${c.date}</span>
+        <button class="saved-del" onclick="deleteConfig(${i})" title="Delete">✕</button>
+      </div>`).join('') +
+    '</div>';
+}
+
+function saveConfig() {
+  if (isResetMode) return;
+  const input = document.getElementById('save-name');
+  const name = input.value.trim();
+  if (!name) { input.focus(); return; }
+  const snapshot = {};
+  CATS.forEach(cat => cat.items.forEach(item => {
+    snapshot[item.id] = { on: state[item.id].on, val: state[item.id].val };
+  }));
+  const list = getSaved();
+  // overwrite if same name exists
+  const existing = list.findIndex(c => c.name.toLowerCase() === name.toLowerCase());
+  const entry = { name, date: new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'short'}), snapshot };
+  if (existing >= 0) list[existing] = entry;
+  else list.unshift(entry);
+  setSaved(list);
+  input.value = '';
+  renderSaved();
+  // flash the panel
+  const panel = document.getElementById('saved-panel');
+  panel.style.borderColor = 'var(--cyan)';
+  setTimeout(() => panel.style.borderColor = '', 600);
+}
+
+function loadConfig(i) {
+  const list = getSaved();
+  const entry = list[i];
+  if (!entry) return;
+  // exit reset mode if active
+  isResetMode = false;
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  CATS.forEach(cat => cat.items.forEach(item => {
+    const s = entry.snapshot[item.id];
+    if (s) {
+      state[item.id].on = s.on;
+      if (s.val !== null && s.val !== undefined) state[item.id].val = s.val;
+    }
+  }));
+  renderCategories();
+  // highlight loaded config row briefly
+  const rows = document.querySelectorAll('.saved-row');
+  if (rows[i]) { rows[i].style.borderColor = 'var(--cyan)'; setTimeout(() => rows[i].style.borderColor = '', 800); }
+}
+
+function deleteConfig(i) {
+  const list = getSaved();
+  list.splice(i, 1);
+  setSaved(list);
+  renderSaved();
+}
+
+// allow Enter key in save input
+document.getElementById('save-name').addEventListener('keydown', e => { if (e.key === 'Enter') saveConfig(); });
+
+renderSaved();
 </script>
 </body>
 </html>
