@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ARK ASA — PvP Config Builder</title>
+<meta name="description" content="Generate optimized ARK: Survival Ascended console commands for PvP — toggle settings by category and copy your config instantly."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+/* ── Reset & tokens ─────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg0: #0d0f12;
+  --bg1: #13161b;
+  --bg2: #1a1e25;
+  --bg3: #22272f;
+  --bg4: #2a3040;
+  --border: rgba(255,255,255,0.07);
+  --border-mid: rgba(255,255,255,0.12);
+  --border-strong: rgba(255,255,255,0.2);
+  --cyan: #00e5cc;
+  --cyan-dim: rgba(0,229,204,0.12);
+  --cyan-glow: rgba(0,229,204,0.25);
+  --text-primary: #e8eaed;
+  --text-secondary: #8b919e;
+  --text-muted: #555c68;
+  --font-ui: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --shadow-panel: 0 2px 16px rgba(0,0,0,0.4);
+}
+
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font-ui);
+  background: var(--bg0);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* ── Layout ──────────────────────────────────────── */
+.page { max-width: 1280px; margin: 0 auto; padding: 0 20px 60px; }
+
+header {
+  padding: 28px 0 20px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.header-left { display: flex; align-items: baseline; gap: 12px; }
+.logo {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  color: var(--text-primary);
+}
+.logo span { color: var(--cyan); }
+.tagline { font-size: 12px; color: var(--text-muted); }
+
+.preset-group { display: flex; gap: 6px; }
+.preset-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.preset-btn:hover { border-color: var(--border-strong); color: var(--text-primary); background: var(--bg2); }
+.preset-btn.active { border-color: var(--cyan); color: var(--cyan); background: var(--cyan-dim); }
+
+.main { display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start; }
+
+/* ── Left: categories ────────────────────────────── */
+.categories { display: flex; flex-direction: column; gap: 6px; }
+
+.global-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-bottom: 4px;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s;
+}
+.global-toggle-row:hover { border-color: var(--border-mid); }
+.global-toggle-row span { font-size: 12px; color: var(--text-secondary); }
+
+.cat-block {
+  background: var(--bg1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.cat-block:hover { border-color: var(--border-mid); }
+
+.cat-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  cursor: pointer;
+  user-select: none;
+  background: var(--bg2);
+  transition: background 0.12s;
+}
+.cat-header:hover { background: var(--bg3); }
+
+.cat-icon {
+  width: 26px; height: 26px;
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.cat-title { font-size: 13px; font-weight: 600; flex: 1; letter-spacing: -0.1px; }
+.cat-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 40px;
+  text-align: right;
+}
+.cat-chevron {
+  color: var(--text-muted);
+  font-size: 10px;
+  transition: transform 0.2s;
+  margin-left: 4px;
+}
+.cat-chevron.open { transform: rotate(180deg); }
+
+.cat-body { display: none; }
+.cat-body.open { display: block; }
+
+/* ── Setting rows ────────────────────────────────── */
+.setting-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 14px;
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.1s;
+  user-select: none;
+}
+.setting-row:hover { background: var(--bg2); }
+.setting-row.has-slider { flex-direction: column; cursor: default; }
+.setting-row.has-slider .row-top { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; width: 100%; }
+
+.setting-info { flex: 1; min-width: 0; }
+.setting-label {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.setting-cmd {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.setting-desc { font-size: 11.5px; color: var(--text-secondary); margin-top: 2px; line-height: 1.45; }
+
+/* impact badges */
+.badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.badge-high { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
+.badge-med  { background: rgba(234,179,8,0.12);  color: #facc15; border: 1px solid rgba(234,179,8,0.2); }
+.badge-low  { background: rgba(100,116,139,0.15); color: #94a3b8; border: 1px solid rgba(100,116,139,0.2); }
+
+/* ── Toggle ──────────────────────────────────────── */
+.toggle {
+  width: 34px; height: 19px;
+  border-radius: 10px;
+  background: var(--bg4);
+  border: 1px solid var(--border-mid);
+  position: relative;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  margin-top: 1px;
+}
+.toggle.on { background: var(--cyan); border-color: var(--cyan); }
+.toggle::after {
+  content: '';
+  position: absolute;
+  width: 13px; height: 13px;
+  border-radius: 50%;
+  background: #fff;
+  top: 2px; left: 2px;
+  transition: transform 0.15s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+.toggle.on::after { transform: translateX(15px); }
+
+/* ── Slider ──────────────────────────────────────── */
+.slider-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 4px 0 2px;
+  transition: opacity 0.15s;
+}
+.slider-wrap.disabled { opacity: 0.3; pointer-events: none; }
+.slider-wrap input[type=range] {
+  flex: 1;
+  height: 3px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--bg4);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+.slider-wrap input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--cyan);
+  cursor: pointer;
+  border: 2px solid var(--bg1);
+}
+.slider-wrap input[type=range]::-moz-range-thumb {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--cyan);
+  cursor: pointer;
+  border: 2px solid var(--bg1);
+}
+.slider-val {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--cyan);
+  min-width: 48px;
+  text-align: right;
+  font-weight: 500;
+}
+
+/* ── Right panel ─────────────────────────────────── */
+.right-panel {
+  position: sticky;
+  top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.panel-section {
+  background: var(--bg1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.panel-header {
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+}
+
+/* stats grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--border);
+}
+.stat-cell {
+  background: var(--bg1);
+  padding: 14px 16px;
+}
+.stat-val {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
+}
+.stat-label { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.val-fps { color: var(--cyan); }
+.val-vis { color: #818cf8; }
+.val-on  { color: #4ade80; }
+.val-off { color: var(--text-muted); }
+
+/* output */
+.output-area {
+  padding: 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.9;
+  color: #a5f3e8;
+  word-break: break-all;
+  min-height: 120px;
+  max-height: 280px;
+  overflow-y: auto;
+  background: #080b0e;
+  transition: box-shadow 0.3s;
+}
+.output-area.flash {
+  box-shadow: inset 0 0 0 1px var(--cyan-glow), 0 0 20px var(--cyan-glow);
+}
+.output-area::-webkit-scrollbar { width: 4px; }
+.output-area::-webkit-scrollbar-track { background: transparent; }
+.output-area::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 2px; }
+
+.copy-btn {
+  width: 100%;
+  padding: 11px;
+  background: var(--cyan);
+  border: none;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  color: #000;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  letter-spacing: 0.01em;
+}
+.copy-btn:hover { opacity: 0.9; }
+.copy-btn:active { transform: scale(0.99); }
+.copy-btn.copied { background: #4ade80; }
+
+/* how-to */
+.howto {
+  padding: 14px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+.howto strong { color: var(--text-primary); font-weight: 500; }
+.howto ol { padding-left: 16px; margin-top: 6px; }
+.howto li { margin-bottom: 4px; }
+.howto code {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  background: var(--bg3);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--cyan);
+}
+
+/* footer */
+footer {
+  margin-top: 40px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+footer a { color: var(--text-muted); text-decoration: none; }
+footer a:hover { color: var(--cyan); }
+
+/* scrollbar global */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg0); }
+::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+
+/* responsive */
+@media (max-width: 900px) {
+  .main { grid-template-columns: 1fr; }
+  .right-panel { position: static; }
+}
+@media (max-width: 560px) {
+  header { flex-direction: column; align-items: flex-start; }
+  .preset-group { flex-wrap: wrap; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="header-left">
+      <div class="logo">ARK <span>ASA</span> Config Builder</div>
+      <div class="tagline">PvP console command generator</div>
+    </div>
+    <div class="preset-group" id="presets">
+      <button class="preset-btn" data-preset="balanced">Balanced</button>
+      <button class="preset-btn" data-preset="competitive">Competitive</button>
+      <button class="preset-btn active" data-preset="nuclear">☢ Nuclear</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="categories" id="categories">
+      <div class="global-toggle-row" onclick="toggleAll()">
+        <div class="toggle on" id="global-tog"></div>
+        <span>Enable / disable all settings</span>
+      </div>
+    </div>
+
+    <div class="right-panel">
+      <div class="panel-section">
+        <div class="panel-header">Impact estimate</div>
+        <div class="stats-grid">
+          <div class="stat-cell"><div class="stat-val val-fps" id="s-fps">+0%</div><div class="stat-label">Est. FPS gain</div></div>
+          <div class="stat-cell"><div class="stat-val val-vis" id="s-vis">0</div><div class="stat-label">Visibility boosts</div></div>
+          <div class="stat-cell"><div class="stat-val val-on"  id="s-on">0</div><div class="stat-label">Commands active</div></div>
+          <div class="stat-cell"><div class="stat-val val-off" id="s-off">0</div><div class="stat-label">Commands off</div></div>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <div class="panel-header">Console command output</div>
+        <div class="output-area" id="output"></div>
+        <button class="copy-btn" id="copy-btn" onclick="copyOutput()">Copy to clipboard</button>
+      </div>
+
+      <div class="panel-section">
+        <div class="panel-header">How to use</div>
+        <div class="howto">
+          <strong>In-game</strong>
+          <ol>
+            <li>Press <code>Tab</code> to open the console</li>
+            <li>Paste the full command block</li>
+            <li>Press <code>Enter</code></li>
+          </ol>
+          <br/>
+          <strong>Persist on every load</strong> — add individual commands to <code>Game.ini</code> or <code>GameUserSettings.ini</code> in your ARK config folder, one per line without the <code>|</code> separators.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <span>ARK: Survival Ascended PvP Config Builder</span>
+    <span>Settings take effect immediately in-game · No game files are modified</span>
+  </footer>
+</div>
+
+<script>
+const CATS = [
+  {
+    id:'fps', name:'Performance & FPS', icon:'⚡', color:'rgba(0,229,204,0.1)', iconColor:'#00e5cc',
+    items:[
+      {id:'vsync',     label:'Disable VSync',              cmd:'r.vsync 0',                                          desc:'Removes frame sync to monitor — lower input latency, possible screen tearing.',                          impact:'high', fpsW:3,  visW:0, on:true},
+      {id:'maxfps',    label:'Uncap FPS',                   cmd:'t.MaxFPS 0',                                         desc:'Removes the engine FPS ceiling entirely.',                                                             impact:'high', fpsW:5,  visW:0, on:true},
+      {id:'screenp',   label:'Screen percentage',           cmd:'r.ScreenPercentage',                                 desc:'Internal render resolution as % of display. 100 = native, 50 = half-res (massive FPS gain).',           impact:'high', fpsW:0,  visW:0, on:true, slider:{min:50,max:130,step:5,val:100,unit:'%'}},
+      {id:'nanite',    label:'Nanite pixel budget',         cmd:'r.Nanite.MaxPixelsPerEdge',                          desc:'Lower = fewer triangles rendered. 0 = minimum geometry.',                                              impact:'high', fpsW:4,  visW:0, on:true, slider:{min:0,max:4,step:1,val:0,unit:''}},
+      {id:'quality',   label:'Master quality override',     cmd:'r.Quality 0',                                        desc:'Forces all scalability groups to minimum in one command.',                                             impact:'high', fpsW:6,  visW:0, on:true},
+      {id:'detail',    label:'Minimum detail mode',         cmd:'r.DetailMode 0',                                     desc:'Hides objects tagged as medium or high detail only.',                                                  impact:'med',  fpsW:2,  visW:0, on:true},
+      {id:'hlod',      label:'Disable HLOD',                cmd:'wp.Runtime.HLOD.ForceDisable 1',                     desc:'Turns off Hierarchical LOD — saves draw call overhead.',                                               impact:'med',  fpsW:2,  visW:0, on:true},
+      {id:'earlyZ',    label:'Disable early Z-pass',        cmd:'r.EarlyZPass 0',                                     desc:'Skips depth pre-pass. Faster on some GPUs.',                                                           impact:'low',  fpsW:1,  visW:0, on:true},
+      {id:'vtfb',      label:'Disable VT feedback',         cmd:'r.VT.EnableFeedback 0',                              desc:'Removes virtual texture feedback buffer overhead.',                                                     impact:'low',  fpsW:1,  visW:0, on:true},
+      {id:'vtpool',    label:'VT pool scale 0',             cmd:'r.VT.PoolSizeScale 0',                               desc:'Shrinks the virtual texture pool.',                                                                     impact:'low',  fpsW:1,  visW:0, on:true},
+      {id:'mip',       label:'MipMap LOD bias',             cmd:'r.MipMapLODBias',                                    desc:'Positive = blurrier textures load sooner, saving VRAM. 0 = no bias (sharp). 2 = aggressive.',          impact:'med',  fpsW:2,  visW:0, on:true, slider:{min:0,max:4,step:1,val:2,unit:''}},
+      {id:'streaming', label:'Texture streaming pool',      cmd:'r.Streaming.PoolSize 1',                             desc:'Pool size in MB. 1 = tiny/aggressive streaming. Raise to 2000+ if you see texture pop-in.',           impact:'med',  fpsW:2,  visW:0, on:true},
+      {id:'texq',      label:'Texture quality',             cmd:'sg.TextureQuality',                                  desc:'0 = lowest res textures (saves VRAM). 3 = max quality. Raise if inventory icons look blurry.',         impact:'high', fpsW:4,  visW:0, on:true, slider:{min:0,max:3,step:1,val:0,unit:''}},
+      {id:'aniso',     label:'Disable anisotropic filtering', cmd:'r.MaxAnisotropy 0',                                desc:'No AF — faster texture sampling but blurry at oblique angles.',                                         impact:'low',  fpsW:1,  visW:0, on:true},
+    ]
+  },
+  {
+    id:'shadow', name:'Shadows', icon:'🌑', color:'rgba(251,191,36,0.08)', iconColor:'#fbbf24',
+    items:[
+      {id:'shadowq',   label:'Disable all shadows',         cmd:'r.ShadowQuality 0',                                  desc:'Turns off shadow rendering entirely. Huge FPS gain.',                                                  impact:'high', fpsW:6,  visW:0, on:true},
+      {id:'vsm',       label:'Disable Virtual Shadow Maps', cmd:'r.Shadow.Virtual.Enable 0',                          desc:'VSM off — saves a large chunk of VRAM.',                                                               impact:'high', fpsW:5,  visW:0, on:true},
+      {id:'csm',       label:'No CSM cascades',             cmd:'r.Shadow.CSM.MaxCascades 0',                         desc:'Removes cascaded shadow maps at range.',                                                                impact:'med',  fpsW:3,  visW:0, on:true},
+      {id:'contact',   label:'No contact shadows',          cmd:'r.ContactShadows 0',                                 desc:'Removes micro-shadows where objects touch.',                                                            impact:'low',  fpsW:1,  visW:0, on:true},
+      {id:'dfs',       label:'No distance field shadows',   cmd:'r.DistanceFieldShadowing 0',                         desc:'Disables soft ambient shadows from distance fields.',                                                   impact:'med',  fpsW:3,  visW:0, on:true},
+      {id:'shadowrad', label:'Shadow radius threshold 100', cmd:'r.Shadow.RadiusThreshold 100',                       desc:'Objects smaller than radius 100 skip shadow casting. Removes most small-object shadows.',               impact:'med',  fpsW:2,  visW:0, on:true},
+      {id:'shadowmin', label:'Min shadow resolution',       cmd:'r.Shadow.MinResolution 1',                           desc:'Forces the smallest possible shadow map resolution.',                                                   impact:'low',  fpsW:1,  visW:0, on:true},
+      {id:'ao',        label:'Disable ambient occlusion',   cmd:'r.AmbientOcclusion.Intensity 0',                     desc:'Removes AO darkening in corners — enemies stay lit in tight spaces.',                                  impact:'med',  fpsW:2,  visW:1, on:true},
+      {id:'grassshad', label:'No grass shadows',            cmd:'grass.DisableDynamicShadows 1',                      desc:'Grass stops casting and receiving dynamic shadows.',                                                    impact:'low',  fpsW:1,  visW:0, on:true},
+    ]
+  },
+  {
+    id:'vis', name:'Visibility', icon:'👁', color:'rgba(129,140,248,0.1)', iconColor:'#818cf8',
+    items:[
+      {id:'clip',      label:'Near clip plane',             cmd:'r.SetNearClipPlane',                                 desc:'Clips terrain geometry this close to your camera. High values create "see-through" windows in hills. 0 = default, 2000 = aggressive. Watch for character clipping.',  impact:'high', fpsW:0,  visW:5, on:true, slider:{min:0,max:8000,step:500,val:2000,unit:' UU'}},
+      {id:'gamma',     label:'Gamma',                       cmd:'gamma',                                              desc:'Brightens dark areas. 2.2 = default, 4.5 = night becomes near-daylight. Combine with disabled tonemapper.',  impact:'high', fpsW:0,  visW:4, on:true, slider:{min:2.2,max:5.5,step:0.1,val:4.5,unit:''}},
+      {id:'skylight',  label:'Skylight intensity',          cmd:'r.SkylightIntensityMultiplier',                      desc:'Multiplies ambient sky light. Eliminates dark shadow zones where enemies can hide.',                     impact:'high', fpsW:0,  visW:4, on:true, slider:{min:1,max:10,step:0.5,val:5,unit:'x'}},
+      {id:'viewdist',  label:'View distance scale',         cmd:'r.ViewDistanceScale',                                desc:'Pushes LOD transitions far out — structures and dinos stay at full detail at extreme range.',             impact:'med',  fpsW:-3, visW:4, on:true, slider:{min:0.5,max:10,step:0.5,val:5,unit:'x'}},
+      {id:'lightdraw', label:'Unlimited light draw distance', cmd:'r.LightMaxDrawDistanceScale -1',                  desc:'-1 = all dynamic lights remain visible at any range.',                                                   impact:'low',  fpsW:0,  visW:2, on:true},
+      {id:'matte',     label:'Force matte materials',       cmd:'r.MinRoughnessOverride 1',                           desc:'Forces all surfaces fully matte — kills specular glare that can obscure enemies in sunlight.',           impact:'med',  fpsW:0,  visW:3, on:true},
+      {id:'skyatm',    label:'Disable sky atmosphere',      cmd:'r.SkyAtmosphere 0',                                  desc:'Replaces physically-based sky with a flat one. Lighter rendering.',                                     impact:'med',  fpsW:2,  visW:0, on:true},
+      {id:'fog',       label:'Disable fog',                 cmd:'r.Fog 0',                                            desc:'Removes distance fog — see further without haze.',                                                      impact:'med',  fpsW:2,  visW:3, on:true},
+      {id:'volfog',    label:'Disable volumetric fog',      cmd:'r.VolumetricFog 0',                                  desc:'No god-ray fog simulation.',                                                                           impact:'med',  fpsW:2,  visW:0, on:true},
+      {id:'cloud',     label:'Disable volumetric clouds',   cmd:'r.VolumetricCloud 0',                                desc:'Removes 3D cloud rendering — flat sky.',                                                                impact:'high', fpsW:4,  visW:0, on:true},
+      {id:'shaft',     label:'Disable light shafts',        cmd:'r.LightShaftQuality 0',                              desc:'No sun god-ray shafts.',                                                                               impact:'low',  fpsW:1,  visW:0, on:true},
+      {id:'lculling',  label:'Fastest light culling',       cmd:'r.LightCulling.Quality 0',                           desc:'Per-tile light culling at minimum quality.',                                                            impact:'low',  fpsW:1,  visW:0, on:true},
+      {id:'contrast',  label:'UI contrast boost',           cmd:'slate.contrast 2',                                   desc:'Doubles Slate UI contrast — HUD elements, nameplates and indicators pop more.',                         impact:'low',  fpsW:0,  visW:2, on:true},
+    ]
+  },
+  {
+    id:'lumen', name:'Lumen / Global Illumination', icon:'💡', color:'rgba(251,146,60,0.08)', iconColor:'#fb923c',
+    items:[
+      {id:'lumenref',  label:'Disable Lumen reflections',   cmd:'r.Lumen.Reflections.Allow 0',                        desc:'No Lumen screen-space GI reflections — significant GPU saving.',                                        impact:'high', fpsW:5,  visW:0, on:true},
+      {id:'lumendiff', label:'Disable Lumen diffuse GI',    cmd:'r.Lumen.DiffuseIndirect.Allow 0',                    desc:'No bounced indirect light from Lumen.',                                                                impact:'high', fpsW:5,  visW:0, on:true},
+      {id:'gimethod',  label:'GI method off',               cmd:'r.DynamicGlobalIlluminationMethod 0',                desc:'Sets dynamic GI to none — no global illumination computation.',                                        impact:'high', fpsW:4,  visW:0, on:true},
+      {id:'giquality', label:'GI quality 0',                cmd:'sg.GlobalIlluminationQuality 0',                     desc:'Global illumination scalability group set to lowest.',                                                  impact:'med',  fpsW:2,  visW:0, on:true},
+      {id:'lumenst',   label:'No Lumen screen traces',      cmd:'r.Lumen.ScreenProbeGather.ScreenTraces 0',           desc:'Disables screen-space traces during Lumen probe gather — slightly cheaper Lumen.',                     impact:'low',  fpsW:1,  visW:0, on:true},
+      {id:'lumenac',   label:'No Lumen async compute',      cmd:'r.Lumen.AsyncCompute 0',                             desc:'Runs Lumen on the main GPU queue — more predictable frame timing.',                                    impact:'low',  fpsW:1,  visW:0, on:true},
+      {id:'ssr',       label:'Disable screen-space reflections', cmd:'r.SSR.Quality 0',                               desc:'No SSR — reflective surfaces become flat.',                                                             impact:'med',  fpsW:2,  visW:0, on:true},
+    ]
+  },
+  {
+    id:'post', name:'Post-processing', icon:'🎨', color:'rgba(167,139,250,0.1)', iconColor:'#a78bfa',
+    items:[
+      {id:'tonemapper',label:'Disable tonemapper',          cmd:'r.Tonemapper 0',                                     desc:'Raw HDR output — blown out in daylight but enemies in shadow become much easier to spot. Pair with gamma.',  impact:'high', fpsW:0,  visW:4, on:true},
+      {id:'sharpen',   label:'Sharpening strength',         cmd:'r.Tonemapper.Sharpen',                               desc:'Image sharpening in the tonemapper pass. 0 = off, 3 = strong crisp image.',                              impact:'med',  fpsW:0,  visW:2, on:true, slider:{min:0,max:5,step:0.5,val:3,unit:''}},
+      {id:'noalias',   label:'Disable anti-aliasing',       cmd:'r.AliasingMethod 0',                                 desc:'No AA blur — sharpest possible edges, enemies easier to spot at range.',                                 impact:'med',  fpsW:1,  visW:2, on:true},
+      {id:'notaa',     label:'Disable Temporal AA',         cmd:'r.TemporalAA 0',                                     desc:'TAA off — no ghost blur on moving targets.',                                                            impact:'med',  fpsW:1,  visW:2, on:true},
+      {id:'bloom',     label:'Disable bloom',               cmd:'r.BloomQuality 0',                                   desc:'No glow halo around bright light sources.',                                                             impact:'low',  fpsW:1,  visW:0, on:true},
+      {id:'dof',       label:'Disable depth of field',      cmd:'r.DepthOfFieldQuality 0',                            desc:'Everything sharp at all distances.',                                                                    impact:'low',  fpsW:1,  visW:1, on:true},
+      {id:'mb',        label:'Disable motion blur',         cmd:'r.MotionBlur.Amount 0',                              desc:'Zero motion blur on fast movement.',                                                                    impact:'low',  fpsW:1,  visW:2, on:true},
+      {id:'eyeadapt',  label:'Disable eye adaptation',      cmd:'r.EyeAdaptationQuality 0',                           desc:'Fixed exposure — no going blind when leaving a cave or dark area.',                                    impact:'med',  fpsW:0,  visW:3, on:true},
+      {id:'blackhist', label:'Disable dark exposure bias',  cmd:'r.EyeAdaptation.BlackHistogramBucketInfluence 0',    desc:'Dark pixels no longer drag down exposure — bright enemies in shadow stay visible.',                     impact:'low',  fpsW:0,  visW:2, on:true},
+      {id:'lens',      label:'Disable lens flare',          cmd:'r.LensFlareQuality 0',                               desc:'No lens flare effects on bright light sources.',                                                        impact:'low',  fpsW:0,  visW:1, on:true},
+      {id:'refract',   label:'Disable refraction',          cmd:'r.RefractionQuality 0',                              desc:'No refraction pass — cheaper rendering.',                                                               impact:'low',  fpsW:1,  visW:0, on:true},
+      {id:'colorgrade',label:'Disable color grading',       cmd:'r.Color.Grading 0',                                  desc:'No LUT color grade — raw saturated colors.',                                                           impact:'low',  fpsW:0,  visW:1, on:true},
+      {id:'ppmat',     label:'Disable post-process materials', cmd:'r.PostProcessing.DisableMaterials 1',             desc:'Removes custom post-processing material effects.',                                                      impact:'med',  fpsW:1,  visW:0, on:true},
+      {id:'aooverwrite',label:'AO overwrite off',           cmd:'r.AOOverwriteSceneColor 0',                          desc:'Standard AO multiply blending — not the destructive overwrite mode.',                                  impact:'low',  fpsW:0,  visW:0, on:true},
+    ]
+  },
+  {
+    id:'foliage', name:'Foliage & Grass', icon:'🌿', color:'rgba(74,222,128,0.08)', iconColor:'#4ade80',
+    items:[
+      {id:'grassen',   label:'Disable grass',               cmd:'grass.Enable 0',                                     desc:'Completely removes all grass objects from the scene.',                                                  impact:'high', fpsW:5,  visW:1, on:true},
+      {id:'grasssz',   label:'Grass size 0',                cmd:'grass.SizeScale 0',                                  desc:'Zero grass object size — nothing renders even if grass is enabled.',                                   impact:'med',  fpsW:2,  visW:0, on:true},
+      {id:'grassden',  label:'Grass density 0',             cmd:'grass.DensityScale 0',                               desc:'Zero density — additional insurance grass is fully gone.',                                             impact:'med',  fpsW:2,  visW:0, on:true},
+      {id:'foliageq',  label:'Foliage quality 0',           cmd:'sg.FoliageQuality 0',                                desc:'Lowest foliage scalability — fewer and simpler trees and bushes.',                                     impact:'high', fpsW:4,  visW:1, on:true},
+      {id:'folilod',   label:'Foliage LOD distance 0',      cmd:'foliage.LODDistanceScale 0',                         desc:'Trees and bushes snap to lowest LOD immediately.',                                                     impact:'med',  fpsW:2,  visW:0, on:true},
+      {id:'wpo',       label:'Disable foliage wind',        cmd:'r.foliage.WPODisableMultiplier 1',                   desc:'No WPO wind sway — cheaper and foliage stops obscuring vision with movement.',                         impact:'low',  fpsW:1,  visW:1, on:true},
+      {id:'grassdq',   label:'Grass density quality 0',     cmd:'r.grass.DesityQualityLevel 0',                       desc:'Lowest grass density quality level.',                                                                  impact:'low',  fpsW:1,  visW:0, on:true},
+    ]
+  },
+  {
+    id:'water', name:'Water', icon:'💧', color:'rgba(56,189,248,0.08)', iconColor:'#38bdf8',
+    items:[
+      {id:'water',     label:'Disable single-layer water',  cmd:'r.Water.SingleLayer 0',                              desc:'Disables the single-layer water system — cheaper water rendering.',                                     impact:'med',  fpsW:2,  visW:0, on:true},
+      {id:'waterref',  label:'No water reflections',        cmd:'r.Water.SingleLayer.Reflection 0',                   desc:'Removes reflections on water surfaces.',                                                                impact:'med',  fpsW:2,  visW:0, on:true},
+      {id:'waterclear',label:'No water optimized clear',    cmd:'r.Water.SingleLayer.OptimizedClear 0',               desc:'Skips optimized clear pass on water.',                                                                  impact:'low',  fpsW:1,  visW:0, on:true},
+    ]
+  },
+  {
+    id:'particles', name:'Particles & FX', icon:'✨', color:'rgba(251,191,36,0.08)', iconColor:'#fbbf24',
+    items:[
+      {id:'cpupart',   label:'No CPU particles',            cmd:'FX.MaxCPUParticlesPerEmitter 0',                     desc:'Zero CPU particles per emitter — removes most particle effects.',                                       impact:'med',  fpsW:3,  visW:0, on:true},
+      {id:'gpupart',   label:'No Niagara GPU particles',    cmd:'fx.MaxNiagaraGPUParticlesSpawnPerFrame 0',           desc:'Zero GPU particle spawns per frame.',                                                                   impact:'med',  fpsW:3,  visW:0, on:true},
+      {id:'niagspr',   label:'No Niagara sprites',          cmd:'fx.EnableNiagaraSpriteRendering 0',                  desc:'Disables Niagara sprite particle rendering.',                                                           impact:'low',  fpsW:2,  visW:0, on:true},
+      {id:'gpufx',     label:'No GPU particles (legacy)',   cmd:'fxAllowGPUParticles 0',                              desc:'Disables the legacy GPU particle system.',                                                              impact:'low',  fpsW:1,  visW:0, on:true},
+      {id:'effq',      label:'Effects quality 0',           cmd:'sg.EffectsQuality 0',                                desc:'Scalability group for effects set to lowest.',                                                          impact:'med',  fpsW:2,  visW:0, on:true},
+    ]
+  },
+  {
+    id:'ark', name:'ARK-specific', icon:'🦖', color:'rgba(239,68,68,0.08)', iconColor:'#f87171',
+    items:[
+      {id:'destmesh',  label:'No destroyed mesh collections', cmd:'ark.MaxActiveDestroyedMeshGeoCollectionCount 0',   desc:'Limits active destroyed geometry to 0 — saves memory and CPU.',                                        impact:'med',  fpsW:2,  visW:0, on:true},
+      {id:'iconsize',  label:'Min icon size 0.1',             cmd:'ark.MinIconSize 0.1',                              desc:'Smaller world icons — reduces HUD clutter at range.',                                                   impact:'low',  fpsW:0,  visW:1, on:true},
+      {id:'spatload',  label:'Override spatial loading range', cmd:'wp.Runtime.OverrideRuntimeSpatialHashLoadingRange -range=5000', desc:'Forces world partition to always stream in a 5000 UU radius around you.',              impact:'med',  fpsW:-1, visW:2, on:true},
+    ]
+  },
+  {
+    id:'misc', name:'Misc / UI', icon:'⚙️', color:'rgba(100,116,139,0.1)', iconColor:'#94a3b8',
+    items:[
+      {id:'statfps',   label:'Show FPS counter',            cmd:'stat fps',                                           desc:'Displays an FPS counter on screen.',                                                                    impact:'low',  fpsW:0,  visW:0, on:true},
+      {id:'scroll',    label:'Scroll speed',                cmd:'Slate.GlobalScrollAmount',                           desc:'Mouse wheel scroll speed in UI panels.',                                                               impact:'low',  fpsW:0,  visW:0, on:true, slider:{min:20,max:200,step:10,val:120,unit:''}},
+      {id:'showfoliage',label:'Hide instanced foliage',     cmd:'show InstancedFoliage',                              desc:'Removes foliage from the show list — makes bushes invisible.',                                         impact:'med',  fpsW:2,  visW:0, on:true},
+      {id:'showgrass', label:'Hide instanced grass',        cmd:'show InstancedGrass',                                desc:'Removes grass from the show list.',                                                                     impact:'med',  fpsW:2,  visW:0, on:true},
+      {id:'showmesh',  label:'Hide instanced static meshes',cmd:'show InstancedStaticMeshes',                         desc:'Removes instanced static meshes from the show list.',                                                   impact:'med',  fpsW:2,  visW:0, on:true},
+    ]
+  },
+];
+
+const PRESETS = {
+  nuclear: { all: true, overrides: {} },
+  competitive: {
+    all: true,
+    overrides: {
+      clip:      { val: 1000 },
+      gamma:     { val: 4.0 },
+      skylight:  { val: 5 },
+      viewdist:  { val: 3 },
+      screenp:   { val: 100 },
+      tonemapper:{ on: false },
+      sharpen:   { val: 3 },
+      mip:       { val: 1 },
+      nanite:    { val: 1 },
+      texq:      { val: 1 },
+      earlyZ:    { on: false },
+      quality:   { on: false },
+    }
+  },
+  balanced: {
+    all: false,
+    overrides: {
+      vsync:     { on: true },
+      maxfps:    { on: true },
+      cloud:     { on: true },
+      volfog:    { on: true },
+      fog:       { on: true },
+      shadowq:   { on: true },
+      vsm:       { on: true },
+      csm:       { on: true },
+      lumenref:  { on: true },
+      lumendiff: { on: true },
+      gimethod:  { on: true },
+      grassen:   { on: true },
+      foliageq:  { on: true },
+      bloom:     { on: true },
+      dof:       { on: true },
+      mb:        { on: true },
+      eyeadapt:  { on: true },
+      gamma:     { on: true, val: 3.2 },
+      skylight:  { on: true, val: 2 },
+      clip:      { on: true, val: 500 },
+      statfps:   { on: true },
+      sharpen:   { on: true, val: 2 },
+      screenp:   { on: true, val: 100 },
+      viewdist:  { on: true, val: 2 },
+      texq:      { on: true, val: 2 },
+      grassden:  { on: true },
+      grasssz:   { on: true },
+      destmesh:  { on: true },
+    }
+  }
+};
+
+// State
+let state = {};
+CATS.forEach(cat => cat.items.forEach(item => {
+  state[item.id] = { on: item.on, val: item.slider ? item.slider.val : null };
+}));
+
+function applyPreset(name) {
+  document.querySelectorAll('.preset-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.preset === name);
+  });
+  const p = PRESETS[name];
+  CATS.forEach(cat => cat.items.forEach(item => {
+    state[item.id] = { on: p.all, val: item.slider ? item.slider.val : null };
+  }));
+  Object.entries(p.overrides || {}).forEach(([id, v]) => {
+    if (!state[id]) return;
+    if (v.on !== undefined) state[id].on = v.on;
+    if (v.val !== undefined) state[id].val = v.val;
+  });
+  renderCategories();
+}
+
+function toggleAll() {
+  const anyOn = Object.values(state).some(s => s.on);
+  CATS.forEach(cat => cat.items.forEach(item => { state[item.id].on = !anyOn; }));
+  document.getElementById('global-tog').classList.toggle('on', !anyOn);
+  renderCategories();
+}
+
+function toggleItem(id) {
+  state[id].on = !state[id].on;
+  const tog = document.getElementById('tog-' + id);
+  if (tog) tog.classList.toggle('on', state[id].on);
+  const sw = document.getElementById('sw-' + id);
+  if (sw) sw.classList.toggle('disabled', !state[id].on);
+  updateCatCounts();
+  updateOutput();
+}
+
+function slideItem(id, rawVal) {
+  const val = parseFloat(rawVal);
+  state[id].val = val;
+  const item = CATS.flatMap(c => c.items).find(i => i.id === id);
+  const disp = Number.isInteger(item.slider.step) ? Math.round(val) : parseFloat(val.toFixed(1));
+  const el = document.getElementById('slv-' + id);
+  if (el) el.textContent = disp + (item.slider.unit || '');
+  updateOutput();
+}
+
+function getCmd(item) {
+  const s = state[item.id];
+  if (!s.on) return null;
+  if (item.slider) {
+    const v = s.val !== null ? s.val : item.slider.val;
+    const disp = Number.isInteger(item.slider.step) ? Math.round(v) : parseFloat(v.toFixed(1));
+    return item.cmd + ' ' + disp;
+  }
+  return item.cmd;
+}
+
+function updateOutput() {
+  const cmds = [];
+  let fpsW = 0, visW = 0, onCnt = 0, offCnt = 0;
+  CATS.forEach(cat => cat.items.forEach(item => {
+    const cmd = getCmd(item);
+    if (cmd) { cmds.push(cmd); fpsW += item.fpsW; visW += item.visW; onCnt++; }
+    else offCnt++;
+  }));
+  const out = document.getElementById('output');
+  out.textContent = cmds.join(' | ');
+  out.classList.add('flash');
+  setTimeout(() => out.classList.remove('flash'), 400);
+
+  const fpsPct = Math.min(Math.round(fpsW * 2.2), 85);
+  document.getElementById('s-fps').textContent = (fpsPct >= 0 ? '+' : '') + fpsPct + '%';
+  document.getElementById('s-vis').textContent = visW;
+  document.getElementById('s-on').textContent = onCnt;
+  document.getElementById('s-off').textContent = offCnt;
+}
+
+function updateCatCounts() {
+  CATS.forEach(cat => {
+    const onCnt = cat.items.filter(i => state[i.id].on).length;
+    const el = document.getElementById('catcount-' + cat.id);
+    if (el) el.textContent = onCnt + '/' + cat.items.length + ' on';
+  });
+}
+
+function toggleCat(id) {
+  const body = document.getElementById('catbody-' + id);
+  const chev = document.getElementById('chev-' + id);
+  const open = body.classList.toggle('open');
+  chev.classList.toggle('open', open);
+}
+
+function renderCategories() {
+  const container = document.getElementById('categories');
+  // keep global toggle row
+  const globalRow = container.querySelector('.global-toggle-row');
+  container.innerHTML = '';
+  container.appendChild(globalRow);
+
+  CATS.forEach(cat => {
+    const onCnt = cat.items.filter(i => state[i.id].on).length;
+    const block = document.createElement('div');
+    block.className = 'cat-block';
+    block.innerHTML = `
+      <div class="cat-header" onclick="toggleCat('${cat.id}')">
+        <div class="cat-icon" style="background:${cat.color}">${cat.icon}</div>
+        <span class="cat-title">${cat.name}</span>
+        <span class="cat-count" id="catcount-${cat.id}">${onCnt}/${cat.items.length} on</span>
+        <span class="cat-chevron open" id="chev-${cat.id}">▼</span>
+      </div>
+      <div class="cat-body open" id="catbody-${cat.id}"></div>
+    `;
+    const body = block.querySelector('.cat-body');
+
+    cat.items.forEach(item => {
+      const s = state[item.id];
+      const impCls = item.impact === 'high' ? 'badge-high' : item.impact === 'med' ? 'badge-med' : 'badge-low';
+      const row = document.createElement('div');
+
+      if (item.slider) {
+        const slVal = s.val !== null ? s.val : item.slider.val;
+        const dispVal = Number.isInteger(item.slider.step) ? Math.round(slVal) : parseFloat(slVal.toFixed(1));
+        row.className = 'setting-row has-slider';
+        row.innerHTML = `
+          <div class="row-top" onclick="toggleItem('${item.id}')">
+            <div class="toggle ${s.on ? 'on' : ''}" id="tog-${item.id}"></div>
+            <div class="setting-info">
+              <div class="setting-label">${item.label}<span class="badge ${impCls}">${item.impact}</span></div>
+              <div class="setting-cmd">${item.cmd}</div>
+              <div class="setting-desc">${item.desc}</div>
+            </div>
+          </div>
+          <div class="slider-wrap${s.on ? '' : ' disabled'}" id="sw-${item.id}">
+            <input type="range" min="${item.slider.min}" max="${item.slider.max}" step="${item.slider.step}" value="${slVal}"
+              id="sl-${item.id}" oninput="slideItem('${item.id}', this.value)"/>
+            <span class="slider-val" id="slv-${item.id}">${dispVal}${item.slider.unit || ''}</span>
+          </div>
+        `;
+      } else {
+        row.className = 'setting-row';
+        row.innerHTML = `
+          <div class="toggle ${s.on ? 'on' : ''}" id="tog-${item.id}"></div>
+          <div class="setting-info">
+            <div class="setting-label">${item.label}<span class="badge ${impCls}">${item.impact}</span></div>
+            <div class="setting-cmd">${item.cmd}</div>
+            <div class="setting-desc">${item.desc}</div>
+          </div>
+        `;
+        row.addEventListener('click', () => toggleItem(item.id));
+      }
+      body.appendChild(row);
+    });
+    container.appendChild(block);
+  });
+
+  updateOutput();
+}
+
+function copyOutput() {
+  const text = document.getElementById('output').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = 'Copied ✓';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'Copy to clipboard';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+// Wire up preset buttons
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+});
+
+// Init
+applyPreset('nuclear');
+</script>
+</body>
+</html>
